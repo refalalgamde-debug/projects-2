@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <title>حاسبة السعرات الحرارية</title>
+    <style>
+        /* تعريف الألوان والخلفية البيج */
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            max-width: 750px; 
+            margin: 35px auto; 
+            padding: 30px; 
+            background-color: #f7f3ed; /* لون الخلفية البيج الفاتح */
+            border: 1px solid #e0d8c9; 
+            border-radius: 12px;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+            direction: rtl; 
+        }
+        h2 { 
+            color: #4b4438; /* لون عنوان داكن */
+            border-bottom: 2px solid #daa520; /* خط ذهبي أسفل العنوان */
+            padding-bottom: 10px; 
+            text-align: center;
+        }
+        label, input, select, button { 
+            display: block; 
+            margin-bottom: 15px; 
+            width: 100%; 
+            box-sizing: border-box; 
+            text-align: right; 
+        }
+        input[type="number"], select {
+            padding: 12px;
+            border: 1px solid #b8b8b8;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #5d4037; /* لون بني داكن للزر */
+            color: white;
+            padding: 14px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: background-color 0.3s;
+        }
+        button:hover { background-color: #4e342e; }
+        .explanation { 
+            background-color: #fffaf0; /* لون أبيض مائل للصفرة للتوضيح */
+            padding: 18px; 
+            border-radius: 8px; 
+            margin-bottom: 25px;
+            border-right: 5px solid #b8860b; /* شريط جانبي بلون ذهبي أغمق */
+        }
+        .result { 
+            margin-top: 30px; 
+            padding: 25px; 
+            background-color: #f0e68c; /* لون ذهبي باهت للنتائج */
+            border: 1px solid #b8860b; 
+            border-radius: 8px; 
+            font-size: 1.3em; 
+            font-weight: bold; 
+            text-align: center;
+        }
+        .error { 
+            margin-top: 25px; 
+            padding: 20px; 
+            background-color: #ffcccb; 
+            border: 1px solid #cc0000; 
+            border-radius: 5px; 
+            color: #cc0000; 
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>حاسبة احتياج السعرات الحرارية اليومي</h2>
+    
+    <div class="explanation">
+        <h3>فكرة الحاسبة:</h3>
+        <p>
+        تعتمد هذه الحاسبة على صيغة **معدل الأيض الأساسي (BMR)**، وهي تقدير لكمية الطاقة التي يحتاجها جسمك في حالة الراحة التامة. يتم دمج BMR مع مستوى نشاطك لتقدير إجمالي السعرات الحرارية للحفاظ على وزنك الحالي.
+        </p>
+    </div>
+    
+    <section>
+        <h3>أدخل بياناتك:</h3>
+        <div>
+            <label for="gender">الجنس:</label>
+            <select id="gender"><option value="m">ذكر</option><option value="f">أنثى</option></select>
+        </div>
+
+        <div>
+            <label for="age">العمر (بالسنوات):</label>
+            <input type="number" id="age" value="30" min="15" placeholder="مثال: 30">
+        </div>
+
+        <div>
+            <label for="weight">الوزن (بالكيلوجرام):</label>
+            <input type="number" id="weight" value="70" step="0.1" placeholder="مثال: 70.5">
+        </div>
+
+        <div>
+            <label for="height">الطول (بالسنتيمتر):</label>
+            <input type="number" id="height" value="175" placeholder="مثال: 175">
+        </div>
+
+        <div>
+            <label for="activity">مستوى النشاط:</label>
+            <select id="activity">
+                <option value="3">3 - نشاط معتدل (3-5 أيام/أسبوع)</option>
+                <option value="1">1 - خامل (قليل أو لا يوجد تمرين)</option>
+                <option value="2">2 - نشاط خفيف (1-3 أيام/أسبوع)</option>
+                <option value="4">4 - نشط جداً (6-7 أيام/أسبوع)</option>
+                <option value="5">5 - نشط إضافي (وظيفة بدنية أو تدريب مرتين يومياً)</option>
+            </select>
+        </div>
+    </section>
+
+    <button onclick="calculate()">احسب السعرات الحرارية</button>
+
+    <div id="result" class="result" style="display: none;"></div>
+    <div id="error" class="error" style="display: none;"></div>
+
+    <script async src="calories.js"></script> 
+
+    <script>
+        let cpp_calculate;
+
+        var Module = {
+            onRuntimeInitialized: function() {
+                // استخدام cwrap للربط بدالة C++
+                cpp_calculate = Module.cwrap('calculate_calories', 'number', ['number', 'number', 'number', 'number', 'number']);
+                console.log("WebAssembly loaded and ready.");
+                document.getElementById('error').style.display = 'none'; 
+            }
+        };
+
+        function calculate() {
+            // قراءة القيم من الواجهة
+            const gender = document.getElementById('gender').value;
+            const age = parseInt(document.getElementById('age').value);
+            const weight = parseFloat(document.getElementById('weight').value);
+            const height = parseFloat(document.getElementById('height').value);
+            const activityLevel = parseInt(document.getElementById('activity').value);
+
+            if (!cpp_calculate) {
+                document.getElementById('error').innerHTML = "لم يتم تحميل محرك الحاسبة بعد. يرجى الانتظار قليلاً.";
+                document.getElementById('error').style.display = 'block';
+                return;
+            }
+
+            // استدعاء دالة C++ المترجمة
+            const calorie_result = cpp_calculate(gender.charCodeAt(0), age, weight, height, activityLevel);
+
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('result').style.display = 'none';
+            
+            // عرض النتيجة
+            if (calorie_result === -1) {
+                document.getElementById('error').innerHTML = "خطأ: قيمة غير صالحة للجنس!";
+                document.getElementById('error').style.display = 'block';
+            } else if (calorie_result === -2) {
+                document.getElementById('error').innerHTML = "خطأ: مستوى نشاط غير صالح!";
+                document.getElementById('error').style.display = 'block';
+            } else if (calorie_result <= 0 || isNaN(calorie_result)) {
+                 document.getElementById('error').innerHTML = "خطأ: يرجى التأكد من إدخال جميع البيانات بشكل صحيح.";
+                document.getElementById('error').style.display = 'block';
+            }
+             else {
+                document.getElementById('result').style.display = 'block';
+                // استخدام علامات Backticks (`) لحل مشكلة تعدد الأسطر
+                document.getElementById('result').innerHTML = `
+                    <p>احتياجك اليومي المقدر من السعرات الحرارية للحفاظ على الوزن هو:</p>
+                    <strong>${calorie_result.toLocaleString()} سعرة حرارية</strong>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
